@@ -32,6 +32,10 @@ dev = [
     "pre-commit>=4.5",
     "pyarrow>=17",
 ]
+benchmark = [
+    "xmltodict>=0.13",
+    "lxml>=5.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/andree0/fast-xml-flattener"

@@ -13,15 +13,12 @@ from __future__ import annotations
 import gc
 import json
 import statistics
-import sys
 import time
-from textwrap import dedent
-from typing import Callable
-
-import lxml.etree as ET
-import xmltodict
+from collections.abc import Callable
 
 import fast_xml_flattener as fxf
+import lxml.etree as ET
+import xmltodict
 
 # ─── XML generation ────────────────────────────────────────────────────────────
 
