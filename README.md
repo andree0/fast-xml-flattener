@@ -5,6 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/built%20with-Rust-orange?logo=rust)](https://www.rust-lang.org/)
 [![CI](https://github.com/andree0/fast-xml-flattener/actions/workflows/ci.yml/badge.svg)](https://github.com/andree0/fast-xml-flattener/actions)
+[![codecov](https://codecov.io/gh/andree0/fast-xml-flattener/branch/main/graph/badge.svg?flag=rust)](https://codecov.io/gh/andree0/fast-xml-flattener)
 
 **Flatten nested XML into CSV, JSON, Parquet, or Python dicts — in milliseconds, not seconds.**
 
