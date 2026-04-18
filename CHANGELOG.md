@@ -7,6 +7,13 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 
 
+
+## [0.1.5] - 2026-04-18
+
+### Bug Fixes
+
+- fix: build wheels [fix]
+
 ## [0.1.4] - 2026-04-18
 
 ### Bug Fixes
