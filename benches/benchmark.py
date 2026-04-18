@@ -55,6 +55,7 @@ def make_xml(n_records: int) -> str:
 
 # ─── xmltodict helpers ─────────────────────────────────────────────────────────
 
+
 def _flatten_dict(d: dict, parent: str = "", sep: str = ".") -> dict:
     out = {}
     for k, v in d.items():
@@ -80,6 +81,7 @@ def xmltodict_to_flat_dict(xml: str) -> dict:
 def lxml_to_flat_dict(xml: str) -> dict:
     root = ET.fromstring(xml.encode())
     out = {}
+
     def walk(el: ET.Element, prefix: str) -> None:
         children = list(el)
         if not children:
@@ -98,6 +100,7 @@ def lxml_to_flat_dict(xml: str) -> dict:
             else:
                 key = f"{prefix}.{tag}"
             walk(ch, key)
+
     walk(root, root.tag)
     return out
 
@@ -124,24 +127,20 @@ def bench(fn: Callable, *args, label: str) -> tuple[float, float]:
 # ─── Main ──────────────────────────────────────────────────────────────────────
 
 SIZES = [
-    ("1 MB",  1_200),
+    ("1 MB", 1_200),
     ("10 MB", 12_000),
     ("50 MB", 60_000),
 ]
 
 TASKS = [
-    ("XML → flat dict",
-     fxf.to_flatten_dict,
-     xmltodict_to_flat_dict,
-     lxml_to_flat_dict),
-    ("XML → nested dict",
-     fxf.to_dict,
-     xmltodict.parse,
-     None),
-    ("XML → flat JSON",
-     fxf.to_flatten_json,
-     lambda x: json.dumps(_flatten_dict(xmltodict.parse(x))),
-     None),
+    ("XML → flat dict", fxf.to_flatten_dict, xmltodict_to_flat_dict, lxml_to_flat_dict),
+    ("XML → nested dict", fxf.to_dict, xmltodict.parse, None),
+    (
+        "XML → flat JSON",
+        fxf.to_flatten_json,
+        lambda x: json.dumps(_flatten_dict(xmltodict.parse(x))),
+        None,
+    ),
 ]
 
 COL = 28

@@ -43,7 +43,7 @@ def test_attributes_flattened(attrs_xml: str) -> None:
 
 
 def test_mixed_content_flatten() -> None:
-    data = json.loads(fxf.to_flatten_json('<p>hello <b>world</b></p>'))
+    data = json.loads(fxf.to_flatten_json("<p>hello <b>world</b></p>"))
     assert data == {"p.#text": "hello ", "p.b": "world"}
 
 

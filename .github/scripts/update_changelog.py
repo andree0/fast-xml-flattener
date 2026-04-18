@@ -38,7 +38,7 @@ def main() -> None:
     marker = "\n## ["
     idx = existing.find(marker)
     if idx != -1:
-        updated = existing[:idx] + "\n\n" + entry + existing[idx + 1:]
+        updated = existing[:idx] + "\n\n" + entry + existing[idx + 1 :]
     else:
         # No prior version sections — append after header.
         updated = existing.rstrip("\n") + "\n\n" + entry

@@ -61,6 +61,11 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
 check_untyped_defs = true
+exclude = ["benches/"]
+
+[[tool.mypy.overrides]]
+module = ["pyarrow", "pyarrow.*", "xmltodict", "lxml", "lxml.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 minversion = "9.0"

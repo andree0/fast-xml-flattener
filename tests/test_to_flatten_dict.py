@@ -19,9 +19,7 @@ def test_returns_native_dict(nested_xml: str) -> None:
 
 
 def test_parity_with_to_flatten_json(nested_xml: str) -> None:
-    assert fxf.to_flatten_dict(nested_xml) == json.loads(
-        fxf.to_flatten_json(nested_xml)
-    )
+    assert fxf.to_flatten_dict(nested_xml) == json.loads(fxf.to_flatten_json(nested_xml))
 
 
 def test_custom_separator_underscore() -> None:

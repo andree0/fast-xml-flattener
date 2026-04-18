@@ -35,7 +35,7 @@ def test_attributes_use_at_prefix(attrs_xml: str) -> None:
 
 
 def test_mixed_content_uses_text_key() -> None:
-    data = json.loads(fxf.to_json('<p>hello <b>world</b></p>'))
+    data = json.loads(fxf.to_json("<p>hello <b>world</b></p>"))
     # Text before the child element is captured under #text.
     assert data == {"p": {"#text": "hello ", "b": "world"}}
 

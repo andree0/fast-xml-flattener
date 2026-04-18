@@ -18,5 +18,8 @@ repos:
     rev: v1.20.1
     hooks:
       - id: mypy
-        additional_dependencies: []
-        args: []
+        additional_dependencies:
+          - pytest
+          - pyarrow
+        args: [--ignore-missing-imports]
+        exclude: ^benches/
