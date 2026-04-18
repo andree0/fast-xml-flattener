@@ -41,3 +41,21 @@ def multi_record_xml() -> str:
 def attrs_xml() -> str:
     """XML with attributes and a text child."""
     return '<item id="42" status="open"><title>Hello</title></item>'
+
+
+@pytest.fixture
+def mixed_content_xml() -> str:
+    """XML where an element has both attributes and text content."""
+    return '<root><city country="PL" zip="00-001">Warsaw</city></root>'
+
+
+@pytest.fixture
+def deep_attrs_xml() -> str:
+    """Nested XML with attributes at multiple levels."""
+    return (
+        "<root>"
+        '<user id="1" role="admin">'
+        '<address country="PL"><city>Warsaw</city></address>'
+        "</user>"
+        "</root>"
+    )

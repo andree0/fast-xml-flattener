@@ -83,7 +83,7 @@ fn to_parquet(py: Python<'_>, xml: &str, path: PathBuf, include_attrs: bool) -> 
 }
 
 #[pymodule]
-fn fast_xml_flattener(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn _fast_xml_flattener(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(to_json, m)?)?;
     m.add_function(wrap_pyfunction!(to_flatten_json, m)?)?;
     m.add_function(wrap_pyfunction!(to_dict, m)?)?;

@@ -44,7 +44,8 @@ Repository = "https://github.com/andree0/fast-xml-flattener"
 Issues = "https://github.com/andree0/fast-xml-flattener/issues"
 
 [tool.maturin]
-module-name = "fast_xml_flattener"
+module-name = "fast_xml_flattener._fast_xml_flattener"
+python-source = "python"
 features = ["pyo3/extension-module"]
 
 [tool.ruff]
@@ -64,6 +65,7 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
 check_untyped_defs = true
+mypy_path = "python"
 exclude = ["benches/"]
 
 [[tool.mypy.overrides]]
