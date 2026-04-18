@@ -1,0 +1,24 @@
+[package]
+name = "fast-xml-flattener"
+version = "0.1.0"
+edition = "2021"
+authors = ["Andrzej Jończy <contact@ajtee.pl>"]
+description = "Fast XML flattening library with Python bindings"
+license = "MIT"
+repository = "https://github.com/andree0/fast-xml-flattener"
+readme = "README.md"
+
+[lib]
+name = "fast_xml_flattener"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.28", features = ["extension-module"] }
+xml-rs = "0.8"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
