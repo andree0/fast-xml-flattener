@@ -25,9 +25,9 @@ pub fn to_csv(root_tag: &str, root: &Node, include_attrs: bool) -> Result<String
             .collect();
         wtr.write_record(&record)?;
     }
-    let buf = wtr.into_inner().map_err(|e| {
-        crate::error::FlattenerError::Io(std::io::Error::other(e.to_string()))
-    })?;
+    let buf = wtr
+        .into_inner()
+        .map_err(|e| crate::error::FlattenerError::Io(std::io::Error::other(e.to_string())))?;
     Ok(String::from_utf8(buf).expect("csv produces valid UTF-8"))
 }
 

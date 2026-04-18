@@ -19,12 +19,7 @@ use crate::node::Node;
 use crate::record::extract_records;
 
 /// Serialize the parsed document as a Parquet file at `path`.
-pub fn to_parquet(
-    root_tag: &str,
-    root: &Node,
-    path: &Path,
-    include_attrs: bool,
-) -> Result<()> {
+pub fn to_parquet(root_tag: &str, root: &Node, path: &Path, include_attrs: bool) -> Result<()> {
     let (cols, rows) = extract_records(root_tag, root, ".", include_attrs);
 
     let fields: Vec<Field> = cols

@@ -33,7 +33,7 @@ The speed advantage grows with document size: the Rust parser processes data at 
 - **GIL-free** for string/CSV/Parquet outputs — safe to use from thread pools
 - **xmltodict-compatible** semantics: `@attr`, `#text`, auto-list for repeated tags
 - Namespace stripping, CDATA, entity references, comments — all handled correctly
-- Supports Python 3.9+
+- Supports Python 3.10+
 
 ## Output Formats
 
@@ -117,7 +117,7 @@ duckdb.sql("SELECT * FROM 'output.parquet'").show()
 
 ### Requirements
 
-- Python 3.9+ (3.13 recommended for development)
+- Python 3.10+ (3.13 recommended for development)
 - Rust (stable)
 - [maturin](https://github.com/PyO3/maturin)
 
