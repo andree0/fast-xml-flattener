@@ -1,5 +1,5 @@
-//! XML parser: converts a string of XML into the internal `Node` tree using
-//! `quick-xml`'s streaming reader.
+//! XML parser: converts XML (from a string or file) into the internal `Node`
+//! tree using `quick-xml`'s streaming reader.
 //!
 //! Performance notes:
 //! - `quick-xml` is a pull parser, so no DOM is built by the library itself.
@@ -11,6 +11,10 @@
 //! - Namespaces are stripped from tag names (local-name only). Attribute
 //!   namespaces are likewise stripped. This matches xmltodict behavior.
 
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+use std::path::Path;
+
 use quick_xml::events::{BytesStart, Event};
 use quick_xml::name::QName;
 use quick_xml::Decoder;
@@ -19,20 +23,37 @@ use quick_xml::Reader;
 use crate::error::{FlattenerError, Result};
 use crate::node::{Children, Node, TEXT_KEY};
 
-/// Parse an XML string into a single root `Node::Element`. The returned node
-/// represents the document root (there is exactly one top-level element in
-/// well-formed XML).
+/// Parse an XML string into a single root `Node::Element`.
 pub fn parse(xml: &str) -> Result<(Box<str>, Node)> {
     let mut reader = Reader::from_str(xml);
-    let reader_config = reader.config_mut();
-    reader_config.trim_text(false);
-    reader_config.expand_empty_elements = false;
+    configure(&mut reader);
+    parse_reader(&mut reader)
+}
+
+/// Parse an XML file into a single root `Node::Element`.
+/// The file is read in buffered chunks — the full content is never held in
+/// memory at once.
+pub fn parse_file(path: &Path) -> Result<(Box<str>, Node)> {
+    let file = File::open(path).map_err(FlattenerError::Io)?;
+    let mut reader = Reader::from_reader(BufReader::new(file));
+    configure(&mut reader);
+    parse_reader(&mut reader)
+}
+
+/// Apply shared reader configuration.
+fn configure<R: BufRead>(reader: &mut Reader<R>) {
+    let cfg = reader.config_mut();
+    cfg.trim_text(false);
+    cfg.expand_empty_elements = false;
+}
+
+/// Drive the event loop for any `BufRead`-backed reader and build the Node
+/// tree. Stack depth is bounded by XML nesting depth, not document size.
+fn parse_reader<R: BufRead>(reader: &mut Reader<R>) -> Result<(Box<str>, Node)> {
+    // `Decoder` is Copy — safe to capture before the mutable borrow loop.
     let decoder = reader.decoder();
 
-    // Stack of (tag, node) pairs. The current element under construction is
-    // always the top of the stack.
     let mut stack: Vec<(Box<str>, Node)> = Vec::with_capacity(16);
-    // Holds the root once the parser pops the outermost element.
     let mut root: Option<(Box<str>, Node)> = None;
     let mut buf = Vec::with_capacity(256);
 

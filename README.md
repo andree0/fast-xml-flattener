@@ -40,11 +40,35 @@
 
 - Flatten nested XML into **JSON**, **flatten-JSON**, native Python **dict**, **flatten-dict**, **CSV**, or **Parquet**
 - **Dot-notation object access** — navigate parsed XML like `obj.user.address.city` with `XmlObject`
+- **File streaming** — pass a `Path` or filename string; Rust reads the file in buffered chunks without loading it into Python memory
 - **Single-pass** streaming parser — no DOM, no intermediate `Value` allocation
 - **GIL-free** for string/CSV/Parquet outputs — safe to use from thread pools
 - **xmltodict-compatible** semantics: `@attr`, `#text`, auto-list for repeated tags
 - Namespace stripping, CDATA, entity references, comments — all handled correctly
 - Supports Python 3.10+
+
+## Input
+
+Every function accepts XML content **or** a file path — no manual `open()` required:
+
+```python
+# XML string
+fxf.to_dict("<root><a>1</a></root>")
+
+# pathlib.Path — Rust reads the file in buffered chunks
+fxf.to_dict(Path("data.xml"))
+
+# plain str path (does not start with '<')
+fxf.to_dict("data.xml")
+```
+
+| Input type | Behaviour |
+|---|---|
+| `str` starting with `<` | Parsed as XML content |
+| `str` not starting with `<` | Treated as a file path |
+| `pathlib.Path` / `os.PathLike` | Always treated as a file path |
+
+File I/O happens entirely in Rust via a buffered reader — the file is never fully loaded into Python memory.
 
 ## Output Formats
 
@@ -109,6 +133,13 @@ fxf.to_parquet(xml, path="output.parquet", include_attrs=True)
 obj = fxf.to_object(xml)
 print(obj.root.user.name)              # Alice
 print(obj.root.user.address.city)      # Warsaw
+
+# All functions also accept a file path — Rust streams the file without
+# loading it into Python memory
+from pathlib import Path
+
+d = fxf.to_dict(Path("data.xml"))
+obj = fxf.to_object("data.xml")        # plain str path works too
 ```
 
 ### XmlObject — dot-notation access
@@ -220,7 +251,7 @@ maturin build --release  # release wheel
 ### Tests
 
 ```bash
-uv run pytest            # Python integration tests (52 cases)
+uv run pytest            # Python integration tests (95 cases)
 cargo test               # Rust unit tests (25 cases)
 uv run ruff check .      # linting
 cargo clippy --all-targets -- -D warnings  # Rust linting
