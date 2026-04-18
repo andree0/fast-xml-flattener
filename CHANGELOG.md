@@ -8,6 +8,15 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 
 
+
+## [0.1.6] - 2026-04-18
+
+### Bug Fixes
+
+- Merge pull request #3 from andree0/f/py-object [fix]
+
+feat: add to_object method [fix]
+
 ## [0.1.5] - 2026-04-18
 
 ### Bug Fixes
