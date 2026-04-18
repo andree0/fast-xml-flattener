@@ -1,0 +1,211 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+# One release at a time — cancel any in-progress run if a new push arrives.
+concurrency:
+  group: release
+  cancel-in-progress: true
+
+jobs:
+  # ─── 1. Detect bump type from commit message ───────────────────────────────
+  detect-bump:
+    name: Detect version bump
+    runs-on: ubuntu-latest
+    # Skip commits made by the bot itself (version-bump commits).
+    if: "!contains(github.event.head_commit.message, 'chore: bump version')"
+    outputs:
+      bump: ${{ steps.detect.outputs.bump }}
+      should_release: ${{ steps.detect.outputs.should_release }}
+    steps:
+      - name: Detect [fix] / [minor] / [major]
+        id: detect
+        env:
+          MSG: ${{ github.event.head_commit.message }}
+        run: |
+          if echo "$MSG" | grep -qiE '\[major\]'; then
+            echo "bump=major"         >> "$GITHUB_OUTPUT"
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          elif echo "$MSG" | grep -qiE '\[minor\]'; then
+            echo "bump=minor"          >> "$GITHUB_OUTPUT"
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          elif echo "$MSG" | grep -qiE '\[fix\]'; then
+            echo "bump=patch"          >> "$GITHUB_OUTPUT"
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "bump=none"           >> "$GITHUB_OUTPUT"
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ─── 2. Bump version, update CHANGELOG, create tag ─────────────────────────
+  version-bump:
+    name: Bump version & tag
+    needs: detect-bump
+    if: needs.detect-bump.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      new_version: ${{ steps.bump.outputs.new_version }}
+      tag: ${{ steps.bump.outputs.tag }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Fetch full history so we can push back the bump commit.
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Bump version in Cargo.toml + pyproject.toml
+        id: bump
+        run: |
+          NEW=$(python .github/scripts/bump_version.py ${{ needs.detect-bump.outputs.bump }})
+          echo "new_version=$NEW"  >> "$GITHUB_OUTPUT"
+          echo "tag=v$NEW"         >> "$GITHUB_OUTPUT"
+
+      - name: Update CHANGELOG.md
+        run: |
+          python .github/scripts/update_changelog.py \
+            "${{ steps.bump.outputs.new_version }}" \
+            "${{ needs.detect-bump.outputs.bump }}" \
+            "${{ github.event.head_commit.message }}"
+
+      - name: Commit & tag
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Cargo.toml pyproject.toml CHANGELOG.md
+          git commit -m "chore: bump version to ${{ steps.bump.outputs.new_version }}"
+          git tag "${{ steps.bump.outputs.tag }}"
+          git push origin HEAD main
+          git push origin "${{ steps.bump.outputs.tag }}"
+
+  # ─── 3. Build wheels (matrix: linux, macos, windows) ───────────────────────
+  build-wheels:
+    name: Build wheels (${{ matrix.target }})
+    needs: version-bump
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            target: x86_64
+            manylinux: auto
+          - runner: ubuntu-latest
+            target: aarch64
+            manylinux: auto
+          - runner: macos-latest
+            target: universal2-apple-darwin
+            manylinux: ""
+          - runner: windows-latest
+            target: x86_64
+            manylinux: ""
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version-bump.outputs.tag }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Build wheels (Linux)
+        if: runner.os == 'Linux'
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          manylinux: ${{ matrix.manylinux }}
+          args: --release --out dist
+          sccache: true
+
+      - name: Build wheels (macOS / Windows)
+        if: runner.os != 'Linux'
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          args: --release --out dist
+          sccache: true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.target }}
+          path: dist/
+
+  # ─── 4. Build source distribution ──────────────────────────────────────────
+  build-sdist:
+    name: Build sdist
+    needs: version-bump
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version-bump.outputs.tag }}
+
+      - uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sdist
+          path: dist/
+
+  # ─── 5. Publish to PyPI via trusted publishing ─────────────────────────────
+  publish:
+    name: Publish to PyPI
+    needs: [version-bump, build-wheels, build-sdist]
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write  # required for OIDC trusted publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: dist/
+
+      - uses: PyO3/maturin-action@v1
+        with:
+          command: upload
+          args: --non-interactive --skip-existing dist/*
+
+  # ─── 6. Create GitHub Release ──────────────────────────────────────────────
+  github-release:
+    name: GitHub Release
+    needs: [version-bump, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version-bump.outputs.tag }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: dist/
+
+      - name: Extract changelog entry
+        id: changelog
+        run: |
+          VERSION=${{ needs.version-bump.outputs.new_version }}
+          # Extract the block between this version and the previous one
+          BODY=$(awk "/^## \[$VERSION\]/,/^## \[/" CHANGELOG.md \
+                 | head -n -1 | tail -n +2)
+          echo "body<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$BODY"      >> "$GITHUB_OUTPUT"
+          echo "EOF"        >> "$GITHUB_OUTPUT"
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version-bump.outputs.tag }}
+          name: v${{ needs.version-bump.outputs.new_version }}
+          body: ${{ steps.changelog.outputs.body }}
+          files: dist/*

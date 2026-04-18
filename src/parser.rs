@@ -53,14 +53,23 @@ pub fn parse(xml: &str) -> Result<(Box<str>, Node)> {
                 attach(&mut stack, &mut root, tag, node);
             }
             Event::Text(ref e) => {
-                // Decode UTF-8 first, then resolve entity references
-                // (&amp;, &lt;, numeric character references, ...).
+                // Decode UTF-8 first, then resolve any entity references that
+                // may appear within the text slice.
                 let decoded = e.decode()?;
                 let unescaped = quick_xml::escape::unescape(&decoded)?;
                 let text = unescaped.as_ref();
                 if !text.trim().is_empty() {
                     push_text(&mut stack, text)?;
                 }
+            }
+            Event::GeneralRef(ref e) => {
+                // quick-xml 0.39 emits general entity references (`&amp;`,
+                // `&lt;`, numeric char refs, ...) as their own event. Resolve
+                // by asking `unescape` to expand the `&name;` form.
+                let name = std::str::from_utf8(e.as_ref())?;
+                let with_markers = format!("&{name};");
+                let resolved = quick_xml::escape::unescape(&with_markers)?;
+                push_text(&mut stack, resolved.as_ref())?;
             }
             Event::CData(ref e) => {
                 let text = std::str::from_utf8(e.as_ref())?;
@@ -138,7 +147,7 @@ fn push_text(stack: &mut [(Box<str>, Node)], text: &str) -> Result<()> {
 /// Attach a completed (`tag`, `node`) either to the current parent (if the
 /// stack is non-empty) or promote it to the document root.
 fn attach(
-    stack: &mut Vec<(Box<str>, Node)>,
+    stack: &mut [(Box<str>, Node)],
     root: &mut Option<(Box<str>, Node)>,
     tag: Box<str>,
     node: Node,

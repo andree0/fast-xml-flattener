@@ -41,13 +41,13 @@ def test_missing_field_produces_empty_cell() -> None:
 
 
 def test_include_attrs_true_by_default(attrs_xml: str) -> None:
-    header, rows = _parse_csv(fxf.to_csv(attrs_xml))
+    header, _rows = _parse_csv(fxf.to_csv(attrs_xml))
     assert "item.@id" in header
     assert "item.@status" in header
 
 
 def test_include_attrs_false(attrs_xml: str) -> None:
-    header, rows = _parse_csv(fxf.to_csv(attrs_xml, include_attrs=False))
+    header, _rows = _parse_csv(fxf.to_csv(attrs_xml, include_attrs=False))
     assert all("@" not in col for col in header)
     assert header == ["item.title"]
 

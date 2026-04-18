@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "fast-xml-flattener"
-version = "0.1.0"
+version = "0.1.1"
 description = "Fast XML flattening library with Python bindings"
 readme = "README.md"
 license = { text = "MIT" }
@@ -29,7 +29,7 @@ dev = [
     "pytest>=9.0",
     "pytest-cov>=6.0",
     "ruff>=0.15",
-    "mypy>=1.20",
+    "mypy>=1.14",
     "pre-commit>=4.5",
     "pyarrow>=17",
 ]
@@ -47,7 +47,6 @@ features = ["pyo3/extension-module"]
 [tool.ruff]
 line-length = 100
 target-version = "py313"
-extend-select = ["I", "UP", "RUF"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "RUF"]

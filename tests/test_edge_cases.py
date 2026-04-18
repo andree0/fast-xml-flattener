@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 import fast_xml_flattener as fxf
+import pytest
 
 
 def test_malformed_xml_raises() -> None:

@@ -27,7 +27,7 @@ pub fn to_flatten_dict<'py>(
     let out = PyDict::new(py);
     let mut key = String::with_capacity(64);
     key.push_str(root_tag);
-    flatten_into(py, &out, &mut key, root, separator)?;
+    flatten_into(&out, &mut key, root, separator)?;
     Ok(out)
 }
 
@@ -67,7 +67,6 @@ fn node_to_py<'py>(py: Python<'py>, node: &Node) -> PyResult<Bound<'py, PyAny>> 
 /// Recursively walk the tree and insert flat `(key, value)` entries into
 /// `out`. Reuses `key` via push/truncate semantics.
 fn flatten_into<'py>(
-    py: Python<'py>,
     out: &Bound<'py, PyDict>,
     key: &mut String,
     node: &Node,
@@ -98,7 +97,7 @@ fn flatten_into<'py>(
                     Children::One(n) => {
                         key.push_str(sep);
                         key.push_str(tag);
-                        flatten_into(py, out, key, n, sep)?;
+                        flatten_into(out, key, n, sep)?;
                         key.truncate(base_len);
                     }
                     Children::Many(v) => {
@@ -107,7 +106,7 @@ fn flatten_into<'py>(
                             key.push_str(sep);
                             key.push_str(tag);
                             let _ = write!(key, "[{i}]");
-                            flatten_into(py, out, key, n, sep)?;
+                            flatten_into(out, key, n, sep)?;
                             key.truncate(base_len);
                         }
                     }
