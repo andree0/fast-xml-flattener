@@ -111,6 +111,7 @@ jobs:
           ref: ${{ needs.version-bump.outputs.tag }}
 
       - uses: actions/setup-python@v5
+        if: runner.os != 'Linux'
         with:
           python-version: "3.13"
 
@@ -120,7 +121,7 @@ jobs:
         with:
           target: ${{ matrix.target }}
           manylinux: ${{ matrix.manylinux }}
-          args: --release --out dist
+          args: --release --out dist --find-interpreter
           sccache: true
 
       - name: Build wheels (macOS / Windows)
