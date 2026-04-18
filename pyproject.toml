@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "fast-xml-flattener"
-version = "0.1.1"
+version = "0.1.2"
 description = "Fast XML flattening library with Python bindings"
 readme = "README.md"
 license = { text = "MIT" }

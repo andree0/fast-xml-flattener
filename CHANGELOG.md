@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
+
+## [0.1.2] - 2026-04-18
+
+### Bug Fixes
+
+- fix: release workflow [fix]
+
 ## [0.1.0] - 2026-04-18
 
 ### New Features
