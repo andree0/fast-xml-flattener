@@ -39,6 +39,7 @@
 ## Features
 
 - Flatten nested XML into **JSON**, **flatten-JSON**, native Python **dict**, **flatten-dict**, **CSV**, or **Parquet**
+- **Dot-notation object access** — navigate parsed XML like `obj.user.address.city` with `XmlObject`
 - **Single-pass** streaming parser — no DOM, no intermediate `Value` allocation
 - **GIL-free** for string/CSV/Parquet outputs — safe to use from thread pools
 - **xmltodict-compatible** semantics: `@attr`, `#text`, auto-list for repeated tags
@@ -55,6 +56,7 @@
 | `to_flatten_dict(xml, separator=".")` | `dict` | Flat Python dict with dot-notation keys |
 | `to_csv(xml, include_attrs=True)` | `str` | Tabular CSV, one row per XML record |
 | `to_parquet(xml, path, include_attrs=True)` | `None` | Columnar Parquet file for big-data workflows |
+| `to_object(xml)` | `XmlObject` | Dot-notation Python object with attribute and text access |
 
 ## Installation
 
@@ -102,7 +104,55 @@ csv = fxf.to_csv(xml, include_attrs=True)
 
 # Parquet — ready for pandas / Spark / DuckDB
 fxf.to_parquet(xml, path="output.parquet", include_attrs=True)
+
+# Dot-notation object access
+obj = fxf.to_object(xml)
+print(obj.root.user.name)              # Alice
+print(obj.root.user.address.city)      # Warsaw
 ```
+
+### XmlObject — dot-notation access
+
+`to_object()` parses XML and returns an `XmlObject` that wraps the result of `to_dict()`. XML parsing is done in Rust; the object layer adds minimal Python overhead.
+
+```python
+xml = '''
+<catalog>
+  <book id="1" lang="en">
+    <title>Clean Code</title>
+    <author>Robert C. Martin</author>
+  </book>
+  <book id="2" lang="pl">
+    <title>Czysty Kod</title>
+    <author>Robert C. Martin</author>
+  </book>
+</catalog>
+'''
+
+obj = fxf.to_object(xml)
+
+# Navigate nested structure with dot notation
+books = obj.catalog.book          # list of XmlObject (repeated tag)
+print(books[0].title)             # Clean Code
+print(books[1].title)             # Czysty Kod
+
+# Access XML attributes via _attrs (no @ prefix)
+print(books[0]._attrs)            # {"id": "1", "lang": "en"}
+print(books[0]._attrs["lang"])    # en
+
+# Access text content via _text (useful when element has both text and attrs)
+print(books[0].title._text)       # Clean Code
+
+# Get the underlying raw dict via .raw
+print(books[0].raw)               # {"@id": "1", "@lang": "en", "title": "Clean Code", ...}
+```
+
+| Property / access | Returns | Description |
+|---|---|---|
+| `obj.child_tag` | `XmlObject`, `list[XmlObject]`, or `str` | Child element; list when tag repeats; str for pure-text leaves |
+| `obj._attrs` | `dict[str, str]` | XML attributes of this element (keys without `@` prefix) |
+| `obj._text` | `str \| None` | Text content (`#text`) of this element |
+| `obj.raw` | `dict \| str` | Underlying value from `to_dict()` — str for pure-text leaves |
 
 ### Loading Parquet with pandas
 

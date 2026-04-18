@@ -82,8 +82,9 @@ fn to_parquet(py: Python<'_>, xml: &str, path: PathBuf, include_attrs: bool) -> 
     .map_err(Into::into)
 }
 
+// LCOV_EXCL_START
 #[pymodule]
-fn fast_xml_flattener(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn _fast_xml_flattener(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(to_json, m)?)?;
     m.add_function(wrap_pyfunction!(to_flatten_json, m)?)?;
     m.add_function(wrap_pyfunction!(to_dict, m)?)?;
@@ -93,3 +94,4 @@ fn fast_xml_flattener(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     Ok(())
 }
+// LCOV_EXCL_STOP
