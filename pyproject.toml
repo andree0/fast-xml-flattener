@@ -55,6 +55,9 @@ target-version = "py313"
 select = ["E", "F", "W", "I", "UP", "RUF"]
 ignore = []
 
+[tool.ruff.lint.isort]
+known-first-party = ["fast_xml_flattener"]
+
 [tool.mypy]
 python_version = "3.13"
 warn_return_any = true

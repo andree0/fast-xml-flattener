@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import fast_xml_flattener as fxf
 import pyarrow.parquet as pq
 import pytest
+
+import fast_xml_flattener as fxf
 
 
 def test_file_is_created(simple_xml: str, tmp_path: Path) -> None:
