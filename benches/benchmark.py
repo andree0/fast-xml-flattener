@@ -16,9 +16,10 @@ import statistics
 import time
 from collections.abc import Callable
 
-import fast_xml_flattener as fxf
 import lxml.etree as ET
 import xmltodict
+
+import fast_xml_flattener as fxf
 
 # ─── XML generation ────────────────────────────────────────────────────────────
 
