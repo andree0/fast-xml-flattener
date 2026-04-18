@@ -4,17 +4,16 @@ build-backend = "maturin"
 
 [project]
 name = "fast-xml-flattener"
-version = "0.1.0"
+version = "0.1.1"
 description = "Fast XML flattening library with Python bindings"
 readme = "README.md"
 license = { text = "MIT" }
 authors = [
     { name = "Andrzej Jończy", email = "contact@ajtee.pl" }
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -31,6 +30,7 @@ dev = [
     "ruff>=0.15",
     "mypy>=1.20",
     "pre-commit>=4.5",
+    "pyarrow>=17",
 ]
 
 [project.urls]
@@ -46,7 +46,6 @@ features = ["pyo3/extension-module"]
 [tool.ruff]
 line-length = 100
 target-version = "py313"
-extend-select = ["I", "UP", "RUF"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "RUF"]
@@ -60,6 +59,6 @@ disallow_untyped_defs = false
 check_untyped_defs = true
 
 [tool.pytest.ini_options]
-minversion = "8.0"
+minversion = "9.0"
 testpaths = ["tests"]
 addopts = "--strict-markers -v --cov=fast_xml_flattener --cov-report=term-missing"
