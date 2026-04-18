@@ -82,7 +82,7 @@ jobs:
           git add Cargo.toml pyproject.toml CHANGELOG.md
           git commit -m "chore: bump version to ${{ steps.bump.outputs.new_version }}"
           git tag "${{ steps.bump.outputs.tag }}"
-          git push origin HEAD main
+          git push origin HEAD:main
           git push origin "${{ steps.bump.outputs.tag }}"
 
   # ─── 3. Build wheels (matrix: linux, macos, windows) ───────────────────────
