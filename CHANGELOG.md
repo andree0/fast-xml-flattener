@@ -6,6 +6,13 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 
 
+
+## [0.1.4] - 2026-04-18
+
+### Bug Fixes
+
+- Merge branch 'main' of github.com:andree0/fast-xml-flattener [fix]
+
 ## [0.1.3] - 2026-04-18
 
 ### Bug Fixes
