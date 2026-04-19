@@ -99,4 +99,73 @@ mod tests {
         el.insert_child(TEXT_KEY.into(), Node::Text("hello".into()));
         assert_eq!(el.pure_text(), Some("hello"));
     }
+
+    #[test]
+    fn empty_element_has_no_children_or_attrs() {
+        let el = Node::empty_element();
+        if let Node::Element { attrs, children } = el {
+            assert!(attrs.is_empty());
+            assert!(children.is_empty());
+        } else {
+            panic!("expected Element");
+        }
+    }
+
+    #[test]
+    fn insert_three_children_stays_many() {
+        let mut el = Node::empty_element();
+        el.insert_child("item".into(), Node::Text("a".into()));
+        el.insert_child("item".into(), Node::Text("b".into()));
+        el.insert_child("item".into(), Node::Text("c".into()));
+        if let Node::Element { children, .. } = &el {
+            match children.get("item") {
+                Some(Children::Many(v)) => assert_eq!(v.len(), 3),
+                _ => panic!("expected Many with 3 items"),
+            }
+        }
+    }
+
+    #[test]
+    fn pure_text_returns_none_for_text_node() {
+        let n = Node::Text("hello".into());
+        assert_eq!(n.pure_text(), None);
+    }
+
+    #[test]
+    fn pure_text_returns_none_for_empty_element() {
+        let el = Node::empty_element();
+        assert_eq!(el.pure_text(), None);
+    }
+
+    #[test]
+    fn pure_text_returns_none_for_element_with_attrs() {
+        let mut el = Node::empty_element();
+        if let Node::Element { attrs, .. } = &mut el {
+            attrs.insert("@id".into(), "1".into());
+        }
+        el.insert_child(TEXT_KEY.into(), Node::Text("hello".into()));
+        assert_eq!(el.pure_text(), None);
+    }
+
+    #[test]
+    fn pure_text_returns_none_for_multiple_children() {
+        let mut el = Node::empty_element();
+        el.insert_child(TEXT_KEY.into(), Node::Text("hello".into()));
+        el.insert_child("other".into(), Node::Text("world".into()));
+        assert_eq!(el.pure_text(), None);
+    }
+
+    #[test]
+    fn pure_text_returns_none_for_non_text_key() {
+        let mut el = Node::empty_element();
+        el.insert_child("other_key".into(), Node::Text("hello".into()));
+        assert_eq!(el.pure_text(), None);
+    }
+
+    #[test]
+    fn insert_child_on_text_node_is_noop() {
+        let mut n = Node::Text("hello".into());
+        n.insert_child("x".into(), Node::Text("y".into()));
+        assert!(matches!(n, Node::Text(_)));
+    }
 }

@@ -192,4 +192,42 @@ mod tests {
         let out = to_flatten_json(&tag, &node, "_").unwrap();
         assert_eq!(out, r#"{"r_a_b":"x"}"#);
     }
+
+    #[test]
+    fn element_with_attrs_1to1() {
+        let (tag, node) = parse(r#"<r id="1"><a>x</a></r>"#).unwrap();
+        let out = to_json(&tag, &node).unwrap();
+        assert!(out.contains(r#""@id":"1""#));
+        assert!(out.contains(r#""a":"x""#));
+    }
+
+    #[test]
+    fn empty_element_1to1() {
+        let (tag, node) = parse("<br/>").unwrap();
+        let out = to_json(&tag, &node).unwrap();
+        assert_eq!(out, r#"{"br":{}}"#);
+    }
+
+    #[test]
+    fn empty_element_flat() {
+        let (tag, node) = parse("<br/>").unwrap();
+        let out = to_flatten_json(&tag, &node, ".").unwrap();
+        assert_eq!(out, r#"{"br":""}"#);
+    }
+
+    #[test]
+    fn flat_with_attrs() {
+        let (tag, node) = parse(r#"<r id="1"><a>x</a></r>"#).unwrap();
+        let out = to_flatten_json(&tag, &node, ".").unwrap();
+        assert!(out.contains(r#""r.@id":"1""#));
+        assert!(out.contains(r#""r.a":"x""#));
+    }
+
+    #[test]
+    fn mixed_content_1to1() {
+        let (tag, node) = parse(r#"<r id="1">hello</r>"#).unwrap();
+        let out = to_json(&tag, &node).unwrap();
+        assert!(out.contains(r#""@id":"1""#));
+        assert!(out.contains(r##""#text":"hello""##));
+    }
 }

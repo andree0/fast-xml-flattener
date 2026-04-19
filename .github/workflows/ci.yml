@@ -42,7 +42,7 @@ jobs:
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
       - name: Generate coverage
-        run: cargo llvm-cov --all-features --lcov --output-path lcov.info
+        run: cargo llvm-cov --all-features --lcov --output-path lcov.info --ignore-filename-regex 'dict\.rs|lib\.rs'
       - name: Upload to Codecov
         uses: codecov/codecov-action@v5
         with:
@@ -70,4 +70,11 @@ jobs:
       - name: Install dev deps
         run: pip install uv && uv pip install -e ".[dev]" --system
       - name: Python integration tests
-        run: pytest
+        run: pytest --cov-report=xml:coverage-python.xml
+      - name: Upload Python coverage to Codecov
+        if: matrix.python-version == '3.13'
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage-python.xml
+          flags: python
+          token: ${{ secrets.CODECOV_TOKEN }}

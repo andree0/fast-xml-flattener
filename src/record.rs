@@ -160,4 +160,49 @@ mod tests {
         let (cols_without, _) = extract_records(&tag, &node, ".", false);
         assert!(!cols_without.iter().any(|c| c.contains('@')));
     }
+
+    #[test]
+    fn empty_element_produces_empty_string() {
+        let (tag, node) = parse("<x><a/></x>").unwrap();
+        let (cols, rows) = extract_records(&tag, &node, ".", true);
+        assert!(cols.iter().any(|c| c == "x.a"));
+        assert_eq!(rows[0].get("x.a").map(String::as_str), Some(""));
+    }
+
+    #[test]
+    fn sparse_columns_across_records() {
+        let (tag, node) = parse("<xs><x><a>1</a></x><x><b>2</b></x></xs>").unwrap();
+        let (cols, rows) = extract_records(&tag, &node, ".", true);
+        assert!(cols.contains(&"a".to_string()));
+        assert!(cols.contains(&"b".to_string()));
+        assert_eq!(rows.len(), 2);
+        assert!(rows[0].get("b").is_none());
+        assert!(rows[1].get("a").is_none());
+    }
+
+    #[test]
+    fn custom_separator() {
+        let (tag, node) = parse("<x><a><b>1</b></a></x>").unwrap();
+        let (cols, _) = extract_records(&tag, &node, "_", true);
+        assert!(cols.iter().any(|c| c == "x_a_b"));
+    }
+
+    #[test]
+    fn deeply_nested_record() {
+        let (tag, node) = parse("<x><a><b><c>deep</c></b></a></x>").unwrap();
+        let (cols, rows) = extract_records(&tag, &node, ".", true);
+        assert!(cols.iter().any(|c| c == "x.a.b.c"));
+        assert_eq!(rows[0].get("x.a.b.c").map(String::as_str), Some("deep"));
+    }
+
+    #[test]
+    fn repeated_children_indexed_in_single_record() {
+        // Two distinct child tags → root is single record, repeated tag gets [i] suffix.
+        let (tag, node) = parse("<x><a>1</a><i>2</i><i>3</i></x>").unwrap();
+        let (cols, rows) = extract_records(&tag, &node, ".", true);
+        assert!(cols.iter().any(|c| c == "x.i[0]"), "cols: {cols:?}");
+        assert!(cols.iter().any(|c| c == "x.i[1]"), "cols: {cols:?}");
+        assert_eq!(rows[0].get("x.i[0]").map(String::as_str), Some("2"));
+        assert_eq!(rows[0].get("x.i[1]").map(String::as_str), Some("3"));
+    }
 }

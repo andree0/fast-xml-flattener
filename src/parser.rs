@@ -261,4 +261,93 @@ mod tests {
     fn malformed_errors() {
         assert!(parse("<a><b></a>").is_err());
     }
+
+    #[test]
+    fn entity_reference_expanded() {
+        let (_, node) = parse("<r>&amp;</r>").unwrap();
+        assert_eq!(node.pure_text(), Some("&"));
+    }
+
+    #[test]
+    fn unknown_entity_errors() {
+        assert!(parse("<r>&undefined_entity_xyz;</r>").is_err());
+    }
+
+    #[test]
+    fn text_fragments_concatenate() {
+        let (_, node) = parse("<r>hello<![CDATA[ world]]></r>").unwrap();
+        assert_eq!(node.pure_text(), Some("hello world"));
+    }
+
+    #[test]
+    fn empty_self_closing_element() {
+        let (tag, node) = parse("<br/>").unwrap();
+        assert_eq!(tag.as_ref(), "br");
+        if let Node::Element { attrs, children } = &node {
+            assert!(attrs.is_empty());
+            assert!(children.is_empty());
+        } else {
+            panic!("expected Element");
+        }
+    }
+
+    #[test]
+    fn comments_are_ignored() {
+        let (_, node) = parse("<r><!-- comment -->hello</r>").unwrap();
+        assert_eq!(node.pure_text(), Some("hello"));
+    }
+
+    #[test]
+    fn processing_instruction_ignored() {
+        let (tag, _) = parse(r#"<?xml version="1.0"?><r>text</r>"#).unwrap();
+        assert_eq!(tag.as_ref(), "r");
+    }
+
+    #[test]
+    fn default_namespace_attribute_skipped() {
+        let (_, node) = parse(r#"<r xmlns="http://example.com">text</r>"#).unwrap();
+        if let Node::Element { attrs, .. } = &node {
+            assert!(!attrs.iter().any(|(k, _)| k.as_ref().contains("xmlns")));
+        }
+        assert_eq!(node.pure_text(), Some("text"));
+    }
+
+    #[test]
+    fn parse_file_reads_xml() {
+        use std::io::Write;
+        let path = std::env::temp_dir().join("fxf_parser_test.xml");
+        {
+            let mut f = std::fs::File::create(&path).unwrap();
+            f.write_all(b"<root><child>value</child></root>").unwrap();
+        }
+        let (tag, node) = parse_file(&path).unwrap();
+        assert_eq!(tag.as_ref(), "root");
+        if let Node::Element { children, .. } = &node {
+            assert!(children.contains_key("child"));
+        }
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn parse_file_not_found_errors() {
+        let path = std::path::Path::new("/nonexistent_path_xyz_fxf/file.xml");
+        assert!(parse_file(path).is_err());
+    }
+
+    #[test]
+    fn deeply_nested_elements() {
+        let (tag, _) = parse("<a><b><c><d>deep</d></c></b></a>").unwrap();
+        assert_eq!(tag.as_ref(), "a");
+    }
+
+    #[test]
+    fn element_with_attrs_and_children() {
+        let (_, node) = parse(r#"<r id="42"><a>hello</a></r>"#).unwrap();
+        if let Node::Element { attrs, children } = &node {
+            assert_eq!(attrs.get("@id").map(|v| v.as_ref()), Some("42"));
+            assert!(children.contains_key("a"));
+        } else {
+            panic!("expected Element");
+        }
+    }
 }

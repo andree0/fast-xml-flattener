@@ -75,4 +75,38 @@ mod tests {
         p.push(name);
         p
     }
+
+    #[test]
+    fn multi_record_parquet() {
+        let (tag, node) = parse("<xs><x><a>1</a></x><x><a>2</a></x></xs>").unwrap();
+        let tmp = tempfile_path("fxf_test_multi.parquet");
+        to_parquet(&tag, &node, &tmp, true).unwrap();
+        assert!(tmp.exists());
+        let _ = std::fs::remove_file(&tmp);
+    }
+
+    #[test]
+    fn parquet_exclude_attrs() {
+        let (tag, node) = parse(r#"<r><x a="1"><b>2</b></x></r>"#).unwrap();
+        let tmp = tempfile_path("fxf_test_noattrs.parquet");
+        to_parquet(&tag, &node, &tmp, false).unwrap();
+        assert!(tmp.exists());
+        let _ = std::fs::remove_file(&tmp);
+    }
+
+    #[test]
+    fn parquet_with_sparse_rows() {
+        let (tag, node) = parse("<xs><x><a>1</a></x><x><b>2</b></x></xs>").unwrap();
+        let tmp = tempfile_path("fxf_test_sparse.parquet");
+        to_parquet(&tag, &node, &tmp, true).unwrap();
+        assert!(tmp.exists());
+        let _ = std::fs::remove_file(&tmp);
+    }
+
+    #[test]
+    fn parquet_invalid_path_errors() {
+        let (tag, node) = parse("<r><a>1</a></r>").unwrap();
+        let bad_path = std::path::Path::new("/nonexistent_dir_fxf/out.parquet");
+        assert!(to_parquet(&tag, &node, bad_path, true).is_err());
+    }
 }

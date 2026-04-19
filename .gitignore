@@ -35,6 +35,7 @@ ENV/
 env/
 .venv
 pyvenv.cfg
+.python-version
 
 # IDE
 .vscode/
