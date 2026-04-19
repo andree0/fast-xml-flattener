@@ -106,7 +106,8 @@ mod tests {
 
     #[test]
     fn utf8_variant_display() {
-        let utf8_err = std::str::from_utf8(b"\xff").unwrap_err();
+        let bytes: Vec<u8> = vec![0xff];
+        let utf8_err = std::str::from_utf8(&bytes).unwrap_err();
         let e = FlattenerError::Utf8(utf8_err);
         assert!(e.to_string().contains("UTF-8"));
     }
@@ -120,7 +121,8 @@ mod tests {
 
     #[test]
     fn from_utf8_error() {
-        let utf8_err = std::str::from_utf8(b"\xff").unwrap_err();
+        let bytes: Vec<u8> = vec![0xff];
+        let utf8_err = std::str::from_utf8(&bytes).unwrap_err();
         let e: FlattenerError = utf8_err.into();
         assert!(matches!(e, FlattenerError::Utf8(_)));
     }
