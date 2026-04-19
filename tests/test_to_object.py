@@ -221,3 +221,33 @@ def test_cdata_content():
     xml = "<root><note><![CDATA[Hello & World]]></note></root>"
     obj = to_object(xml)
     assert obj.root.note == "Hello & World"
+
+
+# ---------------------------------------------------------------------------
+# __dir__ — IPython/Jupyter tab completion
+# ---------------------------------------------------------------------------
+
+
+def test_dir_contains_child_keys(nested_xml):
+    obj = to_object(nested_xml)
+    assert "root" in dir(obj)
+    assert "user" in dir(obj.root)
+    assert "name" in dir(obj.root.user)
+    assert "address" in dir(obj.root.user)
+
+
+def test_dir_excludes_xml_attrs_and_text():
+    xml = '<root id="1">hello</root>'
+    obj = to_object(xml)
+    d = dir(obj)
+    assert "root" in d
+    assert "@id" not in d
+    assert "#text" not in d
+
+
+def test_dir_includes_standard_attrs(simple_xml):
+    obj = to_object(simple_xml)
+    d = dir(obj)
+    assert "_attrs" in d
+    assert "_text" in d
+    assert "raw" in d

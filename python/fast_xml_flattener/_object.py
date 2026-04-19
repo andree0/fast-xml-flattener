@@ -68,6 +68,12 @@ class XmlObject:
             return t
         return data
 
+    def __dir__(self) -> list[str]:
+        data: dict[str, Any] = object.__getattribute__(self, "_data")
+        base = list(super().__dir__())
+        xml_keys = [k for k in data if not k.startswith(("@", "#"))]
+        return base + xml_keys
+
     def __repr__(self) -> str:
         data: dict[str, Any] = object.__getattribute__(self, "_data")
         return f"XmlObject({data!r})"
