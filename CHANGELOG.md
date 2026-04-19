@@ -10,6 +10,13 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 
 
+
+## [0.1.8] - 2026-04-19
+
+### Bug Fixes
+
+- feat: add __dir__ for IPython tab completion [fix]
+
 ## [0.1.7] - 2026-04-19
 
 ### Bug Fixes
