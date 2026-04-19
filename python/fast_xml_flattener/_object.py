@@ -1,8 +1,12 @@
 from __future__ import annotations
 
-from typing import Any
+from os import PathLike
+from pathlib import Path
+from typing import Any, Union
 
 from fast_xml_flattener import _fast_xml_flattener
+
+XmlInput = Union[str, Path, "PathLike[str]"]
 
 
 def _wrap(val: object) -> XmlObject | list[Any]:
@@ -82,7 +86,7 @@ class XmlObject:
         return NotImplemented
 
 
-def to_object(xml: str) -> XmlObject:
+def to_object(xml: XmlInput) -> XmlObject:
     """Parse *xml* and return the document root as an :class:`XmlObject`.
 
     Children, attributes, and text content are accessible via dot notation::

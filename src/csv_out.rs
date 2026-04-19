@@ -63,4 +63,36 @@ mod tests {
         let out = to_csv(&tag, &node, true).unwrap();
         assert!(out.contains("\"a,b\""));
     }
+
+    #[test]
+    fn missing_field_becomes_empty_string() {
+        let (tag, node) = parse("<xs><x><a>1</a></x><x><b>2</b></x></xs>").unwrap();
+        let out = to_csv(&tag, &node, true).unwrap();
+        let lines: Vec<&str> = out.lines().collect();
+        assert_eq!(lines[0], "a,b");
+        assert_eq!(lines[1], "1,");
+        assert_eq!(lines[2], ",2");
+    }
+
+    #[test]
+    fn unicode_content() {
+        let (tag, node) = parse("<x><a>héllo wörld</a></x>").unwrap();
+        let out = to_csv(&tag, &node, true).unwrap();
+        assert!(out.contains("héllo wörld"));
+    }
+
+    #[test]
+    fn with_attributes_included() {
+        let (tag, node) = parse(r#"<x a="1"><b>2</b></x>"#).unwrap();
+        let out = to_csv(&tag, &node, true).unwrap();
+        assert!(out.contains("@a"));
+        assert!(out.contains("1"));
+    }
+
+    #[test]
+    fn empty_element_in_csv() {
+        let (tag, node) = parse("<x><a/></x>").unwrap();
+        let out = to_csv(&tag, &node, true).unwrap();
+        assert!(out.starts_with("x.a\n"));
+    }
 }
