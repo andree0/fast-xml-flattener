@@ -1,6 +1,6 @@
 [package]
 name = "fast-xml-flattener"
-version = "0.1.6"
+version = "0.1.7"
 edition = "2021"
 authors = ["Andrzej Jończy <contact@ajtee.pl>"]
 description = "Fast XML flattening library with Python bindings"

@@ -9,6 +9,13 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 
 
+
+## [0.1.7] - 2026-04-19
+
+### Bug Fixes
+
+- feat: add support for reading file by Rust [fix]
+
 ## [0.1.6] - 2026-04-18
 
 ### Bug Fixes
