@@ -7,6 +7,7 @@
 [![CI](https://github.com/andree0/fast-xml-flattener/actions/workflows/ci.yml/badge.svg)](https://github.com/andree0/fast-xml-flattener/actions)
 [![codecov rust](https://img.shields.io/codecov/c/github/andree0/fast-xml-flattener?flag=rust&label=coverage%20rust&logo=rust)](https://codecov.io/gh/andree0/fast-xml-flattener)
 [![codecov python](https://img.shields.io/codecov/c/github/andree0/fast-xml-flattener?flag=python&label=coverage%20python&logo=python)](https://codecov.io/gh/andree0/fast-xml-flattener)
+![Development](https://img.shields.io/badge/Development-Architected%20by%20Human%20%7C%20Implemented%20by%20AI-blueviolet)
 
 **Flatten nested XML into CSV, JSON, Parquet, or Python dicts — in milliseconds, not seconds.**
 
@@ -246,7 +247,6 @@ pre-commit install
 
 ```bash
 uv run maturin develop   # development build
-maturin build --release  # release wheel
 ```
 
 ### Tests
@@ -287,3 +287,5 @@ No API tokens or secrets are required — OIDC handles authentication.
 ## License
 
 MIT
+
+**Note on Development**: Architected by me, implemented with AI. This project explores high-performance Rust-Python integration through modern AI-assisted engineering.
