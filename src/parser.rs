@@ -508,8 +508,14 @@ mod tests {
         )
         .unwrap();
         if let Node::Element { attrs, .. } = node {
-            assert_eq!(attrs.get("@xmlns:tns").map(|v| v.as_ref()), Some("http://ex.com"));
-            assert_eq!(attrs.get("@xmlns").map(|v| v.as_ref()), Some("http://def.com"));
+            assert_eq!(
+                attrs.get("@xmlns:tns").map(|v| v.as_ref()),
+                Some("http://ex.com")
+            );
+            assert_eq!(
+                attrs.get("@xmlns").map(|v| v.as_ref()),
+                Some("http://def.com")
+            );
         } else {
             panic!("expected Element");
         }
@@ -521,8 +527,11 @@ mod tests {
             keep_namespace_declarations: true,
             ..Default::default()
         };
-        let (tag, _) =
-            parse(r#"<tns:root xmlns:tns="http://x"><tns:a>1</tns:a></tns:root>"#, &cfg).unwrap();
+        let (tag, _) = parse(
+            r#"<tns:root xmlns:tns="http://x"><tns:a>1</tns:a></tns:root>"#,
+            &cfg,
+        )
+        .unwrap();
         // Tag name is always local-only, regardless of the flag.
         assert_eq!(tag.as_ref(), "root");
     }

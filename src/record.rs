@@ -37,7 +37,14 @@ pub fn extract_records(
         let mut row: IndexMap<String, String> = IndexMap::new();
         let mut key = String::with_capacity(32);
         key.push_str(&record_prefix);
-        flatten(rec, &mut key, separator, include_attrs, index_as_key, &mut row);
+        flatten(
+            rec,
+            &mut key,
+            separator,
+            include_attrs,
+            index_as_key,
+            &mut row,
+        );
         for col in row.keys() {
             if !columns.contains_key(col) {
                 columns.insert(col.clone(), ());
