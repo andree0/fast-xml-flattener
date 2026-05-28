@@ -5,6 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [Semantic Versioning](https://semver.org/).
 
 
+
+## [0.2.0] - 2026-05-28
+
+### New Features
+
+- chore: release xmltodict-style options and get_root_tag_name [minor]
+
+Re-triggers the release workflow that failed on the previous push due
+to an unescaped commit message. Picks up the features merged in 325205f:
+
+- strip_whitespace, keep_namespace_declarations, index_as_key options
+  on all output functions
+- get_root_tag_name helper for cheap root tag lookup
+- index_as_key uses the separator for list indices instead of brackets
+
 ## [0.1.8] - 2026-04-19
 
 ### Bug Fixes
