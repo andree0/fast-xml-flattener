@@ -152,14 +152,16 @@ mod tests {
 
     #[test]
     fn from_quick_xml_error_gives_xml_variant() {
-        let result = crate::parser::parse("<a><b></a>");
+        let cfg = crate::parser::ParserConfig::default();
+        let result = crate::parser::parse("<a><b></a>", &cfg);
         let err = result.unwrap_err();
         assert!(matches!(err, FlattenerError::Xml(_)));
     }
 
     #[test]
     fn from_quick_xml_escape_error_gives_xml_variant() {
-        let result = crate::parser::parse("<r>&unknown_entity;</r>");
+        let cfg = crate::parser::ParserConfig::default();
+        let result = crate::parser::parse("<r>&unknown_entity;</r>", &cfg);
         assert!(result.is_err());
         if let Err(e) = result {
             assert!(matches!(e, FlattenerError::Xml(_)));

@@ -25,6 +25,8 @@ mod parquet_out;
 mod parser;
 mod record;
 
+use parser::ParserConfig;
+
 /// Resolved input: either an owned XML string or a filesystem path.
 enum InputSource {
     Xml(String),
@@ -32,10 +34,10 @@ enum InputSource {
 }
 
 impl InputSource {
-    fn parse(self) -> error::Result<(Box<str>, node::Node)> {
+    fn parse(self, cfg: &ParserConfig) -> error::Result<(Box<str>, node::Node)> {
         match self {
-            InputSource::Xml(s) => parser::parse(&s),
-            InputSource::File(p) => parser::parse_file(&p),
+            InputSource::Xml(s) => parser::parse(&s, cfg),
+            InputSource::File(p) => parser::parse_file(&p, cfg),
         }
     }
 }
@@ -63,10 +65,25 @@ fn resolve(xml: &Bound<'_, PyAny>) -> PyResult<InputSource> {
 
 /// Parse XML to a 1:1 JSON string that preserves the original structure.
 #[pyfunction]
-fn to_json(py: Python<'_>, xml: &Bound<'_, PyAny>) -> PyResult<String> {
+#[pyo3(signature = (
+    xml,
+    *,
+    strip_whitespace = true,
+    keep_namespace_declarations = false,
+))]
+fn to_json(
+    py: Python<'_>,
+    xml: &Bound<'_, PyAny>,
+    strip_whitespace: bool,
+    keep_namespace_declarations: bool,
+) -> PyResult<String> {
     let source = resolve(xml)?;
+    let cfg = ParserConfig {
+        strip_whitespace,
+        keep_namespace_declarations,
+    };
     py.detach(|| {
-        let (tag, root) = source.parse()?;
+        let (tag, root) = source.parse(&cfg)?;
         json::to_json(&tag, &root)
     })
     .map_err(Into::into)
@@ -74,62 +91,154 @@ fn to_json(py: Python<'_>, xml: &Bound<'_, PyAny>) -> PyResult<String> {
 
 /// Parse XML to a flat JSON string using `separator` to join nested tags.
 #[pyfunction]
-#[pyo3(signature = (xml, separator = "."))]
-fn to_flatten_json(py: Python<'_>, xml: &Bound<'_, PyAny>, separator: &str) -> PyResult<String> {
+#[pyo3(signature = (
+    xml,
+    separator = ".",
+    *,
+    strip_whitespace = true,
+    keep_namespace_declarations = false,
+    index_as_key = false,
+))]
+fn to_flatten_json(
+    py: Python<'_>,
+    xml: &Bound<'_, PyAny>,
+    separator: &str,
+    strip_whitespace: bool,
+    keep_namespace_declarations: bool,
+    index_as_key: bool,
+) -> PyResult<String> {
     let source = resolve(xml)?;
+    let cfg = ParserConfig {
+        strip_whitespace,
+        keep_namespace_declarations,
+    };
     py.detach(|| {
-        let (tag, root) = source.parse()?;
-        json::to_flatten_json(&tag, &root, separator)
+        let (tag, root) = source.parse(&cfg)?;
+        json::to_flatten_json(&tag, &root, separator, index_as_key)
     })
     .map_err(Into::into)
 }
 
 /// Parse XML to a 1:1 nested Python `dict` built directly in Rust.
 #[pyfunction]
-fn to_dict<'py>(py: Python<'py>, xml: &Bound<'_, PyAny>) -> PyResult<Bound<'py, PyDict>> {
+#[pyo3(signature = (
+    xml,
+    *,
+    strip_whitespace = true,
+    keep_namespace_declarations = false,
+))]
+fn to_dict<'py>(
+    py: Python<'py>,
+    xml: &Bound<'_, PyAny>,
+    strip_whitespace: bool,
+    keep_namespace_declarations: bool,
+) -> PyResult<Bound<'py, PyDict>> {
     let source = resolve(xml)?;
-    let (tag, root) = source.parse().map_err(PyErr::from)?;
+    let cfg = ParserConfig {
+        strip_whitespace,
+        keep_namespace_declarations,
+    };
+    let (tag, root) = source.parse(&cfg).map_err(PyErr::from)?;
     dict::to_dict(py, &tag, &root)
 }
 
 /// Parse XML to a flat Python `dict` using `separator`.
 #[pyfunction]
-#[pyo3(signature = (xml, separator = "."))]
+#[pyo3(signature = (
+    xml,
+    separator = ".",
+    *,
+    strip_whitespace = true,
+    keep_namespace_declarations = false,
+    index_as_key = false,
+))]
 fn to_flatten_dict<'py>(
     py: Python<'py>,
     xml: &Bound<'_, PyAny>,
     separator: &str,
+    strip_whitespace: bool,
+    keep_namespace_declarations: bool,
+    index_as_key: bool,
 ) -> PyResult<Bound<'py, PyDict>> {
     let source = resolve(xml)?;
-    let (tag, root) = source.parse().map_err(PyErr::from)?;
-    dict::to_flatten_dict(py, &tag, &root, separator)
+    let cfg = ParserConfig {
+        strip_whitespace,
+        keep_namespace_declarations,
+    };
+    let (tag, root) = source.parse(&cfg).map_err(PyErr::from)?;
+    dict::to_flatten_dict(py, &tag, &root, separator, index_as_key)
 }
 
 /// Parse XML to a CSV string. Attributes are included iff `include_attrs`.
 #[pyfunction]
-#[pyo3(signature = (xml, include_attrs = true))]
-fn to_csv(py: Python<'_>, xml: &Bound<'_, PyAny>, include_attrs: bool) -> PyResult<String> {
+#[pyo3(signature = (
+    xml,
+    include_attrs = true,
+    *,
+    strip_whitespace = true,
+    keep_namespace_declarations = false,
+    index_as_key = false,
+))]
+fn to_csv(
+    py: Python<'_>,
+    xml: &Bound<'_, PyAny>,
+    include_attrs: bool,
+    strip_whitespace: bool,
+    keep_namespace_declarations: bool,
+    index_as_key: bool,
+) -> PyResult<String> {
     let source = resolve(xml)?;
+    let cfg = ParserConfig {
+        strip_whitespace,
+        keep_namespace_declarations,
+    };
     py.detach(|| {
-        let (tag, root) = source.parse()?;
-        csv_out::to_csv(&tag, &root, include_attrs)
+        let (tag, root) = source.parse(&cfg)?;
+        csv_out::to_csv(&tag, &root, include_attrs, index_as_key)
     })
     .map_err(Into::into)
 }
 
 /// Parse XML and write the flattened records to a Parquet file at `path`.
 #[pyfunction]
-#[pyo3(signature = (xml, path, include_attrs = true))]
+#[pyo3(signature = (
+    xml,
+    path,
+    include_attrs = true,
+    *,
+    strip_whitespace = true,
+    keep_namespace_declarations = false,
+    index_as_key = false,
+))]
 fn to_parquet(
     py: Python<'_>,
     xml: &Bound<'_, PyAny>,
     path: PathBuf,
     include_attrs: bool,
+    strip_whitespace: bool,
+    keep_namespace_declarations: bool,
+    index_as_key: bool,
 ) -> PyResult<()> {
     let source = resolve(xml)?;
+    let cfg = ParserConfig {
+        strip_whitespace,
+        keep_namespace_declarations,
+    };
     py.detach(|| {
-        let (tag, root) = source.parse()?;
-        parquet_out::to_parquet(&tag, &root, &path, include_attrs)
+        let (tag, root) = source.parse(&cfg)?;
+        parquet_out::to_parquet(&tag, &root, &path, include_attrs, index_as_key)
+    })
+    .map_err(Into::into)
+}
+
+/// Return the local name of the document root, with any namespace prefix
+/// stripped. Reads only as far as the first start tag.
+#[pyfunction]
+fn get_root_tag_name(py: Python<'_>, xml: &Bound<'_, PyAny>) -> PyResult<String> {
+    let source = resolve(xml)?;
+    py.detach(|| match source {
+        InputSource::Xml(s) => parser::root_tag_name_from_str(&s),
+        InputSource::File(p) => parser::root_tag_name_from_file(&p),
     })
     .map_err(Into::into)
 }
@@ -143,6 +252,7 @@ fn _fast_xml_flattener(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(to_flatten_dict, m)?)?;
     m.add_function(wrap_pyfunction!(to_csv, m)?)?;
     m.add_function(wrap_pyfunction!(to_parquet, m)?)?;
+    m.add_function(wrap_pyfunction!(get_root_tag_name, m)?)?;
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
     Ok(())
 }

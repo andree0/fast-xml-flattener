@@ -92,7 +92,12 @@ class XmlObject:
         return NotImplemented
 
 
-def to_object(xml: XmlInput) -> XmlObject:
+def to_object(
+    xml: XmlInput,
+    *,
+    strip_whitespace: bool = True,
+    keep_namespace_declarations: bool = False,
+) -> XmlObject:
     """Parse *xml* and return the document root as an :class:`XmlObject`.
 
     Children, attributes, and text content are accessible via dot notation::
@@ -102,4 +107,10 @@ def to_object(xml: XmlInput) -> XmlObject:
         obj.root.user._attrs    # -> {"id": "1"}
         obj.root.user.raw       # -> {"@id": "1", "name": "Alice"}
     """
-    return XmlObject(_fast_xml_flattener.to_dict(xml))
+    return XmlObject(
+        _fast_xml_flattener.to_dict(
+            xml,
+            strip_whitespace=strip_whitespace,
+            keep_namespace_declarations=keep_namespace_declarations,
+        )
+    )

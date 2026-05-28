@@ -44,6 +44,12 @@ def test_attributes_flattened(attrs_xml: str) -> None:
 
 def test_mixed_content_flatten() -> None:
     data = json.loads(fxf.to_flatten_json("<p>hello <b>world</b></p>"))
+    # Default strip_whitespace=True trims trailing space.
+    assert data == {"p.#text": "hello", "p.b": "world"}
+
+
+def test_mixed_content_flatten_preserves_whitespace_when_strip_false() -> None:
+    data = json.loads(fxf.to_flatten_json("<p>hello <b>world</b></p>", strip_whitespace=False))
     assert data == {"p.#text": "hello ", "p.b": "world"}
 
 
