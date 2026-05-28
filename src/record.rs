@@ -19,11 +19,14 @@ use crate::node::{Children, Node};
 /// `include_attrs` — when false, attribute entries (keys starting with '@')
 /// are omitted from both column set and row values.
 /// `separator` — used to join nested element tags into dotted column names.
+/// `index_as_key` — when true, repeated-tag indices use `<sep><i>` instead
+/// of `[i]` suffix.
 pub fn extract_records(
     root_tag: &str,
     root: &Node,
     separator: &str,
     include_attrs: bool,
+    index_as_key: bool,
 ) -> (Vec<String>, Vec<IndexMap<String, String>>) {
     let (record_nodes, record_prefix) = select_record_nodes(root_tag, root);
 
@@ -34,7 +37,14 @@ pub fn extract_records(
         let mut row: IndexMap<String, String> = IndexMap::new();
         let mut key = String::with_capacity(32);
         key.push_str(&record_prefix);
-        flatten(rec, &mut key, separator, include_attrs, &mut row);
+        flatten(
+            rec,
+            &mut key,
+            separator,
+            include_attrs,
+            index_as_key,
+            &mut row,
+        );
         for col in row.keys() {
             if !columns.contains_key(col) {
                 columns.insert(col.clone(), ());
@@ -74,6 +84,7 @@ fn flatten(
     key: &mut String,
     sep: &str,
     include_attrs: bool,
+    index_as_key: bool,
     row: &mut IndexMap<String, String>,
 ) {
     match node {
@@ -103,15 +114,20 @@ fn flatten(
                 match kids {
                     Children::One(n) => {
                         push_key(key, sep, tag);
-                        flatten(n, key, sep, include_attrs, row);
+                        flatten(n, key, sep, include_attrs, index_as_key, row);
                         key.truncate(base_len);
                     }
                     Children::Many(v) => {
                         for (i, n) in v.iter().enumerate() {
                             use std::fmt::Write;
                             push_key(key, sep, tag);
-                            let _ = write!(key, "[{i}]");
-                            flatten(n, key, sep, include_attrs, row);
+                            if index_as_key {
+                                key.push_str(sep);
+                                let _ = write!(key, "{i}");
+                            } else {
+                                let _ = write!(key, "[{i}]");
+                            }
+                            flatten(n, key, sep, include_attrs, index_as_key, row);
                             key.truncate(base_len);
                         }
                     }
@@ -131,12 +147,16 @@ fn push_key(key: &mut String, sep: &str, part: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::parse;
+    use crate::parser::{parse, ParserConfig};
+
+    fn p(xml: &str) -> (Box<str>, Node) {
+        parse(xml, &ParserConfig::default()).unwrap()
+    }
 
     #[test]
     fn single_record_root() {
-        let (tag, node) = parse("<x><a>1</a><b>2</b></x>").unwrap();
-        let (cols, rows) = extract_records(&tag, &node, ".", true);
+        let (tag, node) = p("<x><a>1</a><b>2</b></x>");
+        let (cols, rows) = extract_records(&tag, &node, ".", true, false);
         assert_eq!(cols, vec!["x.a", "x.b"]);
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].get("x.a").map(String::as_str), Some("1"));
@@ -144,8 +164,8 @@ mod tests {
 
     #[test]
     fn multi_record_detection() {
-        let (tag, node) = parse("<xs><x><a>1</a></x><x><a>2</a></x></xs>").unwrap();
-        let (cols, rows) = extract_records(&tag, &node, ".", true);
+        let (tag, node) = p("<xs><x><a>1</a></x><x><a>2</a></x></xs>");
+        let (cols, rows) = extract_records(&tag, &node, ".", true, false);
         assert_eq!(cols, vec!["a"]);
         assert_eq!(rows.len(), 2);
         assert_eq!(rows[0].get("a").map(String::as_str), Some("1"));
@@ -154,25 +174,25 @@ mod tests {
 
     #[test]
     fn include_attrs_flag() {
-        let (tag, node) = parse(r#"<x a="1"><b>2</b></x>"#).unwrap();
-        let (cols_with, _) = extract_records(&tag, &node, ".", true);
+        let (tag, node) = p(r#"<x a="1"><b>2</b></x>"#);
+        let (cols_with, _) = extract_records(&tag, &node, ".", true, false);
         assert!(cols_with.iter().any(|c| c == "x.@a"));
-        let (cols_without, _) = extract_records(&tag, &node, ".", false);
+        let (cols_without, _) = extract_records(&tag, &node, ".", false, false);
         assert!(!cols_without.iter().any(|c| c.contains('@')));
     }
 
     #[test]
     fn empty_element_produces_empty_string() {
-        let (tag, node) = parse("<x><a/></x>").unwrap();
-        let (cols, rows) = extract_records(&tag, &node, ".", true);
+        let (tag, node) = p("<x><a/></x>");
+        let (cols, rows) = extract_records(&tag, &node, ".", true, false);
         assert!(cols.iter().any(|c| c == "x.a"));
         assert_eq!(rows[0].get("x.a").map(String::as_str), Some(""));
     }
 
     #[test]
     fn sparse_columns_across_records() {
-        let (tag, node) = parse("<xs><x><a>1</a></x><x><b>2</b></x></xs>").unwrap();
-        let (cols, rows) = extract_records(&tag, &node, ".", true);
+        let (tag, node) = p("<xs><x><a>1</a></x><x><b>2</b></x></xs>");
+        let (cols, rows) = extract_records(&tag, &node, ".", true, false);
         assert!(cols.contains(&"a".to_string()));
         assert!(cols.contains(&"b".to_string()));
         assert_eq!(rows.len(), 2);
@@ -182,15 +202,15 @@ mod tests {
 
     #[test]
     fn custom_separator() {
-        let (tag, node) = parse("<x><a><b>1</b></a></x>").unwrap();
-        let (cols, _) = extract_records(&tag, &node, "_", true);
+        let (tag, node) = p("<x><a><b>1</b></a></x>");
+        let (cols, _) = extract_records(&tag, &node, "_", true, false);
         assert!(cols.iter().any(|c| c == "x_a_b"));
     }
 
     #[test]
     fn deeply_nested_record() {
-        let (tag, node) = parse("<x><a><b><c>deep</c></b></a></x>").unwrap();
-        let (cols, rows) = extract_records(&tag, &node, ".", true);
+        let (tag, node) = p("<x><a><b><c>deep</c></b></a></x>");
+        let (cols, rows) = extract_records(&tag, &node, ".", true, false);
         assert!(cols.iter().any(|c| c == "x.a.b.c"));
         assert_eq!(rows[0].get("x.a.b.c").map(String::as_str), Some("deep"));
     }
@@ -198,11 +218,29 @@ mod tests {
     #[test]
     fn repeated_children_indexed_in_single_record() {
         // Two distinct child tags → root is single record, repeated tag gets [i] suffix.
-        let (tag, node) = parse("<x><a>1</a><i>2</i><i>3</i></x>").unwrap();
-        let (cols, rows) = extract_records(&tag, &node, ".", true);
+        let (tag, node) = p("<x><a>1</a><i>2</i><i>3</i></x>");
+        let (cols, rows) = extract_records(&tag, &node, ".", true, false);
         assert!(cols.iter().any(|c| c == "x.i[0]"), "cols: {cols:?}");
         assert!(cols.iter().any(|c| c == "x.i[1]"), "cols: {cols:?}");
         assert_eq!(rows[0].get("x.i[0]").map(String::as_str), Some("2"));
         assert_eq!(rows[0].get("x.i[1]").map(String::as_str), Some("3"));
+    }
+
+    #[test]
+    fn repeated_children_indexed_as_key() {
+        let (tag, node) = p("<x><a>1</a><i>2</i><i>3</i></x>");
+        let (cols, rows) = extract_records(&tag, &node, ".", true, true);
+        assert!(cols.iter().any(|c| c == "x.i.0"), "cols: {cols:?}");
+        assert!(cols.iter().any(|c| c == "x.i.1"), "cols: {cols:?}");
+        assert_eq!(rows[0].get("x.i.0").map(String::as_str), Some("2"));
+        assert_eq!(rows[0].get("x.i.1").map(String::as_str), Some("3"));
+    }
+
+    #[test]
+    fn index_as_key_uses_custom_separator() {
+        let (tag, node) = p("<x><i>2</i><i>3</i><a>1</a></x>");
+        let (cols, rows) = extract_records(&tag, &node, ">", true, true);
+        assert!(cols.iter().any(|c| c == "x>i>0"), "cols: {cols:?}");
+        assert_eq!(rows[0].get("x>i>1").map(String::as_str), Some("3"));
     }
 }

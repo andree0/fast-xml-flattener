@@ -33,9 +33,15 @@ pub fn to_json(root_tag: &str, root: &Node) -> Result<String> {
 }
 
 /// Produce a flat JSON object using `separator` to join nested element tags.
-/// Repeated siblings get `[i]` index suffixes; attributes get `@name`;
-/// mixed-content text uses `#text`.
-pub fn to_flatten_json(root_tag: &str, root: &Node, separator: &str) -> Result<String> {
+/// Repeated siblings get `[i]` index suffixes (or `<sep><i>` when
+/// `index_as_key` is true); attributes get `@name`; mixed-content text uses
+/// `#text`.
+pub fn to_flatten_json(
+    root_tag: &str,
+    root: &Node,
+    separator: &str,
+    index_as_key: bool,
+) -> Result<String> {
     let mut buf = Vec::with_capacity(256);
     let mut key = String::with_capacity(64);
     key.push_str(root_tag);
@@ -45,7 +51,7 @@ pub fn to_flatten_json(root_tag: &str, root: &Node, separator: &str) -> Result<S
         let mut map = ser
             .serialize_map(None)
             .map_err(|e| crate::error::FlattenerError::Invalid(e.to_string()))?;
-        write_flat(&mut map, &mut key, root, separator)?;
+        write_flat(&mut map, &mut key, root, separator, index_as_key)?;
         map.end()
             .map_err(|e| crate::error::FlattenerError::Invalid(e.to_string()))?;
     }
@@ -94,6 +100,7 @@ fn write_flat<M: SerializeMap>(
     key: &mut String,
     node: &Node,
     sep: &str,
+    index_as_key: bool,
 ) -> Result<()> {
     match node {
         Node::Text(t) => {
@@ -126,7 +133,7 @@ fn write_flat<M: SerializeMap>(
                     Children::One(n) => {
                         key.push_str(sep);
                         key.push_str(tag);
-                        write_flat(map, key, n, sep)?;
+                        write_flat(map, key, n, sep, index_as_key)?;
                         key.truncate(base_len);
                     }
                     Children::Many(v) => {
@@ -134,8 +141,13 @@ fn write_flat<M: SerializeMap>(
                             use std::fmt::Write;
                             key.push_str(sep);
                             key.push_str(tag);
-                            let _ = write!(key, "[{i}]");
-                            write_flat(map, key, n, sep)?;
+                            if index_as_key {
+                                key.push_str(sep);
+                                let _ = write!(key, "{i}");
+                            } else {
+                                let _ = write!(key, "[{i}]");
+                            }
+                            write_flat(map, key, n, sep, index_as_key)?;
                             key.truncate(base_len);
                         }
                     }
@@ -149,53 +161,57 @@ fn write_flat<M: SerializeMap>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::parse;
+    use crate::parser::{parse, ParserConfig};
+
+    fn p(xml: &str) -> (Box<str>, Node) {
+        parse(xml, &ParserConfig::default()).unwrap()
+    }
 
     #[test]
     fn pure_text_leaf_collapses() {
-        let (tag, node) = parse("<a>hi</a>").unwrap();
+        let (tag, node) = p("<a>hi</a>");
         let out = to_json(&tag, &node).unwrap();
         assert_eq!(out, r#"{"a":"hi"}"#);
     }
 
     #[test]
     fn nested_1to1() {
-        let (tag, node) = parse("<r><a>1</a><b>2</b></r>").unwrap();
+        let (tag, node) = p("<r><a>1</a><b>2</b></r>");
         let out = to_json(&tag, &node).unwrap();
         assert_eq!(out, r#"{"r":{"a":"1","b":"2"}}"#);
     }
 
     #[test]
     fn repeated_is_array() {
-        let (tag, node) = parse("<r><i>1</i><i>2</i></r>").unwrap();
+        let (tag, node) = p("<r><i>1</i><i>2</i></r>");
         let out = to_json(&tag, &node).unwrap();
         assert_eq!(out, r#"{"r":{"i":["1","2"]}}"#);
     }
 
     #[test]
     fn flat_dot_notation() {
-        let (tag, node) = parse("<r><a><b>x</b></a></r>").unwrap();
-        let out = to_flatten_json(&tag, &node, ".").unwrap();
+        let (tag, node) = p("<r><a><b>x</b></a></r>");
+        let out = to_flatten_json(&tag, &node, ".", false).unwrap();
         assert_eq!(out, r#"{"r.a.b":"x"}"#);
     }
 
     #[test]
     fn flat_array_indexing() {
-        let (tag, node) = parse("<r><i>1</i><i>2</i></r>").unwrap();
-        let out = to_flatten_json(&tag, &node, ".").unwrap();
+        let (tag, node) = p("<r><i>1</i><i>2</i></r>");
+        let out = to_flatten_json(&tag, &node, ".", false).unwrap();
         assert_eq!(out, r#"{"r.i[0]":"1","r.i[1]":"2"}"#);
     }
 
     #[test]
     fn flat_custom_separator() {
-        let (tag, node) = parse("<r><a><b>x</b></a></r>").unwrap();
-        let out = to_flatten_json(&tag, &node, "_").unwrap();
+        let (tag, node) = p("<r><a><b>x</b></a></r>");
+        let out = to_flatten_json(&tag, &node, "_", false).unwrap();
         assert_eq!(out, r#"{"r_a_b":"x"}"#);
     }
 
     #[test]
     fn element_with_attrs_1to1() {
-        let (tag, node) = parse(r#"<r id="1"><a>x</a></r>"#).unwrap();
+        let (tag, node) = p(r#"<r id="1"><a>x</a></r>"#);
         let out = to_json(&tag, &node).unwrap();
         assert!(out.contains(r#""@id":"1""#));
         assert!(out.contains(r#""a":"x""#));
@@ -203,31 +219,45 @@ mod tests {
 
     #[test]
     fn empty_element_1to1() {
-        let (tag, node) = parse("<br/>").unwrap();
+        let (tag, node) = p("<br/>");
         let out = to_json(&tag, &node).unwrap();
         assert_eq!(out, r#"{"br":{}}"#);
     }
 
     #[test]
     fn empty_element_flat() {
-        let (tag, node) = parse("<br/>").unwrap();
-        let out = to_flatten_json(&tag, &node, ".").unwrap();
+        let (tag, node) = p("<br/>");
+        let out = to_flatten_json(&tag, &node, ".", false).unwrap();
         assert_eq!(out, r#"{"br":""}"#);
     }
 
     #[test]
     fn flat_with_attrs() {
-        let (tag, node) = parse(r#"<r id="1"><a>x</a></r>"#).unwrap();
-        let out = to_flatten_json(&tag, &node, ".").unwrap();
+        let (tag, node) = p(r#"<r id="1"><a>x</a></r>"#);
+        let out = to_flatten_json(&tag, &node, ".", false).unwrap();
         assert!(out.contains(r#""r.@id":"1""#));
         assert!(out.contains(r#""r.a":"x""#));
     }
 
     #[test]
     fn mixed_content_1to1() {
-        let (tag, node) = parse(r#"<r id="1">hello</r>"#).unwrap();
+        let (tag, node) = p(r#"<r id="1">hello</r>"#);
         let out = to_json(&tag, &node).unwrap();
         assert!(out.contains(r#""@id":"1""#));
         assert!(out.contains(r##""#text":"hello""##));
+    }
+
+    #[test]
+    fn flat_array_indexed_as_key_dot() {
+        let (tag, node) = p("<r><i>1</i><i>2</i></r>");
+        let out = to_flatten_json(&tag, &node, ".", true).unwrap();
+        assert_eq!(out, r#"{"r.i.0":"1","r.i.1":"2"}"#);
+    }
+
+    #[test]
+    fn flat_array_indexed_as_key_custom_sep() {
+        let (tag, node) = p("<r><i>1</i><i>2</i></r>");
+        let out = to_flatten_json(&tag, &node, ">", true).unwrap();
+        assert_eq!(out, r#"{"r>i>0":"1","r>i>1":"2"}"#);
     }
 }

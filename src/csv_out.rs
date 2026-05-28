@@ -10,8 +10,13 @@ use crate::node::Node;
 use crate::record::extract_records;
 
 /// Serialize the parsed document to a CSV string.
-pub fn to_csv(root_tag: &str, root: &Node, include_attrs: bool) -> Result<String> {
-    let (cols, rows) = extract_records(root_tag, root, ".", include_attrs);
+pub fn to_csv(
+    root_tag: &str,
+    root: &Node,
+    include_attrs: bool,
+    index_as_key: bool,
+) -> Result<String> {
+    let (cols, rows) = extract_records(root_tag, root, ".", include_attrs, index_as_key);
 
     let mut wtr = csv::WriterBuilder::new()
         .has_headers(false)
@@ -34,40 +39,44 @@ pub fn to_csv(root_tag: &str, root: &Node, include_attrs: bool) -> Result<String
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::parse;
+    use crate::parser::{parse, ParserConfig};
+
+    fn p(xml: &str) -> (Box<str>, crate::node::Node) {
+        parse(xml, &ParserConfig::default()).unwrap()
+    }
 
     #[test]
     fn single_record() {
-        let (tag, node) = parse("<x><a>1</a><b>2</b></x>").unwrap();
-        let out = to_csv(&tag, &node, true).unwrap();
+        let (tag, node) = p("<x><a>1</a><b>2</b></x>");
+        let out = to_csv(&tag, &node, true, false).unwrap();
         assert_eq!(out, "x.a,x.b\n1,2\n");
     }
 
     #[test]
     fn multi_record() {
-        let (tag, node) = parse("<xs><x><a>1</a></x><x><a>2</a></x></xs>").unwrap();
-        let out = to_csv(&tag, &node, true).unwrap();
+        let (tag, node) = p("<xs><x><a>1</a></x><x><a>2</a></x></xs>");
+        let out = to_csv(&tag, &node, true, false).unwrap();
         assert_eq!(out, "a\n1\n2\n");
     }
 
     #[test]
     fn include_attrs_false() {
-        let (tag, node) = parse(r#"<x a="1"><b>2</b></x>"#).unwrap();
-        let out = to_csv(&tag, &node, false).unwrap();
+        let (tag, node) = p(r#"<x a="1"><b>2</b></x>"#);
+        let out = to_csv(&tag, &node, false, false).unwrap();
         assert_eq!(out, "x.b\n2\n");
     }
 
     #[test]
     fn quoting_special_chars() {
-        let (tag, node) = parse("<x><a>a,b</a></x>").unwrap();
-        let out = to_csv(&tag, &node, true).unwrap();
+        let (tag, node) = p("<x><a>a,b</a></x>");
+        let out = to_csv(&tag, &node, true, false).unwrap();
         assert!(out.contains("\"a,b\""));
     }
 
     #[test]
     fn missing_field_becomes_empty_string() {
-        let (tag, node) = parse("<xs><x><a>1</a></x><x><b>2</b></x></xs>").unwrap();
-        let out = to_csv(&tag, &node, true).unwrap();
+        let (tag, node) = p("<xs><x><a>1</a></x><x><b>2</b></x></xs>");
+        let out = to_csv(&tag, &node, true, false).unwrap();
         let lines: Vec<&str> = out.lines().collect();
         assert_eq!(lines[0], "a,b");
         assert_eq!(lines[1], "1,");
@@ -76,23 +85,31 @@ mod tests {
 
     #[test]
     fn unicode_content() {
-        let (tag, node) = parse("<x><a>héllo wörld</a></x>").unwrap();
-        let out = to_csv(&tag, &node, true).unwrap();
+        let (tag, node) = p("<x><a>héllo wörld</a></x>");
+        let out = to_csv(&tag, &node, true, false).unwrap();
         assert!(out.contains("héllo wörld"));
     }
 
     #[test]
     fn with_attributes_included() {
-        let (tag, node) = parse(r#"<x a="1"><b>2</b></x>"#).unwrap();
-        let out = to_csv(&tag, &node, true).unwrap();
+        let (tag, node) = p(r#"<x a="1"><b>2</b></x>"#);
+        let out = to_csv(&tag, &node, true, false).unwrap();
         assert!(out.contains("@a"));
         assert!(out.contains("1"));
     }
 
     #[test]
     fn empty_element_in_csv() {
-        let (tag, node) = parse("<x><a/></x>").unwrap();
-        let out = to_csv(&tag, &node, true).unwrap();
+        let (tag, node) = p("<x><a/></x>");
+        let out = to_csv(&tag, &node, true, false).unwrap();
         assert!(out.starts_with("x.a\n"));
+    }
+
+    #[test]
+    fn index_as_key_in_csv_header() {
+        let (tag, node) = p("<x><a>1</a><i>2</i><i>3</i></x>");
+        let out = to_csv(&tag, &node, true, true).unwrap();
+        assert!(out.lines().next().unwrap().contains("x.i.0"));
+        assert!(!out.contains("x.i[0]"));
     }
 }

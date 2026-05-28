@@ -12,9 +12,11 @@ to_dict = _fast_xml_flattener.to_dict
 to_flatten_dict = _fast_xml_flattener.to_flatten_dict
 to_csv = _fast_xml_flattener.to_csv
 to_parquet = _fast_xml_flattener.to_parquet
+get_root_tag_name = _fast_xml_flattener.get_root_tag_name
 
 __all__ = [
     "XmlObject",
+    "get_root_tag_name",
     "to_csv",
     "to_dict",
     "to_flatten_dict",

@@ -19,8 +19,14 @@ use crate::node::Node;
 use crate::record::extract_records;
 
 /// Serialize the parsed document as a Parquet file at `path`.
-pub fn to_parquet(root_tag: &str, root: &Node, path: &Path, include_attrs: bool) -> Result<()> {
-    let (cols, rows) = extract_records(root_tag, root, ".", include_attrs);
+pub fn to_parquet(
+    root_tag: &str,
+    root: &Node,
+    path: &Path,
+    include_attrs: bool,
+    index_as_key: bool,
+) -> Result<()> {
+    let (cols, rows) = extract_records(root_tag, root, ".", include_attrs, index_as_key);
 
     let fields: Vec<Field> = cols
         .iter()
@@ -59,13 +65,17 @@ pub fn to_parquet(root_tag: &str, root: &Node, path: &Path, include_attrs: bool)
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::parse;
+    use crate::parser::{parse, ParserConfig};
+
+    fn p(xml: &str) -> (Box<str>, Node) {
+        parse(xml, &ParserConfig::default()).unwrap()
+    }
 
     #[test]
     fn writes_parquet_file() {
-        let (tag, node) = parse("<r><a>1</a></r>").unwrap();
+        let (tag, node) = p("<r><a>1</a></r>");
         let tmp = tempfile_path("fxf_test_single.parquet");
-        to_parquet(&tag, &node, &tmp, true).unwrap();
+        to_parquet(&tag, &node, &tmp, true, false).unwrap();
         assert!(tmp.exists());
         let _ = std::fs::remove_file(&tmp);
     }
@@ -78,35 +88,35 @@ mod tests {
 
     #[test]
     fn multi_record_parquet() {
-        let (tag, node) = parse("<xs><x><a>1</a></x><x><a>2</a></x></xs>").unwrap();
+        let (tag, node) = p("<xs><x><a>1</a></x><x><a>2</a></x></xs>");
         let tmp = tempfile_path("fxf_test_multi.parquet");
-        to_parquet(&tag, &node, &tmp, true).unwrap();
+        to_parquet(&tag, &node, &tmp, true, false).unwrap();
         assert!(tmp.exists());
         let _ = std::fs::remove_file(&tmp);
     }
 
     #[test]
     fn parquet_exclude_attrs() {
-        let (tag, node) = parse(r#"<r><x a="1"><b>2</b></x></r>"#).unwrap();
+        let (tag, node) = p(r#"<r><x a="1"><b>2</b></x></r>"#);
         let tmp = tempfile_path("fxf_test_noattrs.parquet");
-        to_parquet(&tag, &node, &tmp, false).unwrap();
+        to_parquet(&tag, &node, &tmp, false, false).unwrap();
         assert!(tmp.exists());
         let _ = std::fs::remove_file(&tmp);
     }
 
     #[test]
     fn parquet_with_sparse_rows() {
-        let (tag, node) = parse("<xs><x><a>1</a></x><x><b>2</b></x></xs>").unwrap();
+        let (tag, node) = p("<xs><x><a>1</a></x><x><b>2</b></x></xs>");
         let tmp = tempfile_path("fxf_test_sparse.parquet");
-        to_parquet(&tag, &node, &tmp, true).unwrap();
+        to_parquet(&tag, &node, &tmp, true, false).unwrap();
         assert!(tmp.exists());
         let _ = std::fs::remove_file(&tmp);
     }
 
     #[test]
     fn parquet_invalid_path_errors() {
-        let (tag, node) = parse("<r><a>1</a></r>").unwrap();
+        let (tag, node) = p("<r><a>1</a></r>");
         let bad_path = std::path::Path::new("/nonexistent_dir_fxf/out.parquet");
-        assert!(to_parquet(&tag, &node, bad_path, true).is_err());
+        assert!(to_parquet(&tag, &node, bad_path, true, false).is_err());
     }
 }

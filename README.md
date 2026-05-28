@@ -83,6 +83,51 @@ File I/O happens entirely in Rust via a buffered reader — the file is never fu
 | `to_csv(xml, include_attrs=True)` | `str` | Tabular CSV, one row per XML record |
 | `to_parquet(xml, path, include_attrs=True)` | `None` | Columnar Parquet file for big-data workflows |
 | `to_object(xml)` | `XmlObject` | Dot-notation Python object with attribute and text access |
+| `get_root_tag_name(xml)` | `str` | Local name of the document root (namespace prefix stripped); reads only the prologue |
+
+### Parser options (keyword-only)
+
+All output functions accept the following keyword-only options:
+
+| Option | Default | Applies to | Effect |
+|---|---|---|---|
+| `strip_whitespace` | `True` | all | Trim leading/trailing whitespace from text values and drop whitespace-only text between elements (xmltodict-style). With `False` every byte is preserved verbatim. |
+| `keep_namespace_declarations` | `False` | all | When `True`, `xmlns` / `xmlns:*` attributes are kept under their full key (`@xmlns`, `@xmlns:tns`). Tag names still have their prefix stripped. |
+| `index_as_key` | `False` | `to_flatten_json`, `to_flatten_dict`, `to_csv`, `to_parquet` | When `True`, repeated-tag indices use `<separator><i>` (`r.i.0`) instead of bracket notation (`r.i[0]`). Plays well with the chosen `separator` (`r>i>0` with `separator=">"`). |
+
+```python
+import fast_xml_flattener as fxf
+
+xml = '''
+<tns:root xmlns:tns="http://example.com">
+  <tns:item>  hi  </tns:item>
+  <tns:i>1</tns:i>
+  <tns:i>2</tns:i>
+</tns:root>'''
+
+# Default (xmltodict-like): trimmed, no xmlns, bracket-indexed arrays
+fxf.to_flatten_dict(xml)
+# {"root.item": "hi", "root.i[0]": "1", "root.i[1]": "2"}
+
+# Keep namespace declarations + dotted indices
+fxf.to_flatten_dict(xml, keep_namespace_declarations=True, index_as_key=True)
+# {"root.@xmlns:tns": "http://example.com",
+#  "root.item": "hi",
+#  "root.i.0": "1",
+#  "root.i.1": "2"}
+
+# Custom separator with dotted indices
+fxf.to_flatten_dict(xml, separator=">", index_as_key=True)
+# {"root>item": "hi", "root>i>0": "1", "root>i>1": "2"}
+
+# Preserve raw whitespace
+fxf.to_dict("<a>  hi  </a>", strip_whitespace=False)
+# {"a": "  hi  "}
+
+# Cheap root-tag lookup (no full parse)
+fxf.get_root_tag_name(xml)                # "root"
+fxf.get_root_tag_name("data.xml")         # reads only the prologue
+```
 
 ## Installation
 

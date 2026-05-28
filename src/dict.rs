@@ -23,11 +23,12 @@ pub fn to_flatten_dict<'py>(
     root_tag: &str,
     root: &Node,
     separator: &str,
+    index_as_key: bool,
 ) -> PyResult<Bound<'py, PyDict>> {
     let out = PyDict::new(py);
     let mut key = String::with_capacity(64);
     key.push_str(root_tag);
-    flatten_into(&out, &mut key, root, separator)?;
+    flatten_into(&out, &mut key, root, separator, index_as_key)?;
     Ok(out)
 }
 
@@ -71,6 +72,7 @@ fn flatten_into<'py>(
     key: &mut String,
     node: &Node,
     sep: &str,
+    index_as_key: bool,
 ) -> PyResult<()> {
     match node {
         Node::Text(t) => {
@@ -97,7 +99,7 @@ fn flatten_into<'py>(
                     Children::One(n) => {
                         key.push_str(sep);
                         key.push_str(tag);
-                        flatten_into(out, key, n, sep)?;
+                        flatten_into(out, key, n, sep, index_as_key)?;
                         key.truncate(base_len);
                     }
                     Children::Many(v) => {
@@ -105,8 +107,13 @@ fn flatten_into<'py>(
                             use std::fmt::Write;
                             key.push_str(sep);
                             key.push_str(tag);
-                            let _ = write!(key, "[{i}]");
-                            flatten_into(out, key, n, sep)?;
+                            if index_as_key {
+                                key.push_str(sep);
+                                let _ = write!(key, "{i}");
+                            } else {
+                                let _ = write!(key, "[{i}]");
+                            }
+                            flatten_into(out, key, n, sep, index_as_key)?;
                             key.truncate(base_len);
                         }
                     }
